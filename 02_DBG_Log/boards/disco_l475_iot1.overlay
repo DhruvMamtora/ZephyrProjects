@@ -1,0 +1,18 @@
+/ {
+    leds {
+        yellow_led_3: led_3 {
+            gpios = <&gpioc 9 GPIO_ACTIVE_HIGH>;
+            label = "User LD3";
+        };
+
+        red_led_4: led_4 {
+            gpios = <&gpioe 3 GPIO_ACTIVE_LOW>;
+            label = "User LD8";
+        };
+    };
+
+    aliases {
+        led2 = &yellow_led_3;
+        led3 = &red_led_4;
+    };
+};
