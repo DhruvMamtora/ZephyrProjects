@@ -1,12 +1,11 @@
 #include "hum_temp_sensor.h"
+#include "sensor_shared.h"
 
 #include <zephyr/device.h>
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/kernel.h>
-#include <zephyr/sys/util.h>
-
 #include <zephyr/logging/log.h>
-
+#include <zephyr/sys/util.h>
 
 LOG_MODULE_REGISTER(hum_temp);
 
@@ -14,7 +13,7 @@ LOG_MODULE_REGISTER(hum_temp);
 #define HUM_TEMP_NODE DT_ALIAS(ht_sensor)
 const struct device *const hts_dev = DEVICE_DT_GET(DT_ALIAS(ht_sensor));
 #else
-#error("Humidity-Temperature sensor not found.");
+#error ("Humidity-Temperature sensor not found.");
 #endif
 
 void hum_temp_sensor_process_sample(void)
@@ -57,4 +56,44 @@ int hun_temp_sensor_init(void)
     hum_temp_sensor_process_sample();
 
     return 0;
+}
+
+int hun_temp_sensor_thread(void *a, void *b, void *c)
+{
+    if (!device_is_ready(hts_dev)) {
+        LOG_ERR("sensor: %s device not ready.", hts_dev->name);
+        return -1;
+    }
+
+    while (1) {
+
+        if (sensor_sample_fetch(hts_dev) < 0) {
+            LOG_ERR("Sensor sample update error");
+            return -1;
+        }
+
+        struct sensor_value temp, hum;
+        if (sensor_channel_get(hts_dev, SENSOR_CHAN_AMBIENT_TEMP, &temp) < 0) {
+            LOG_ERR("Cannot read HTS221 temperature channel");
+            return -1;
+        }
+
+        if (sensor_channel_get(hts_dev, SENSOR_CHAN_HUMIDITY, &hum) < 0) {
+            LOG_ERR("Cannot read HTS221 humidity channel");
+            return -1;
+        }
+
+        k_mutex_lock(&sensor_data_mutex, K_FOREVER);
+        sensor_data.temperature = sensor_value_to_double(&temp);
+        sensor_data.humidity = sensor_value_to_double(&hum);
+        k_mutex_unlock(&sensor_data_mutex);
+
+        /* display temperature */
+        LOG_INF("Temperature:%.1f C", sensor_value_to_double(&temp));
+
+        /* display humidity */
+        LOG_INF("Relative Humidity:%.1f%%", sensor_value_to_double(&hum));
+
+        k_sleep(K_SECONDS(5));
+    }
 }
