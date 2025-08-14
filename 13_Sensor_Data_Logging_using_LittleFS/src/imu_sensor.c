@@ -1,4 +1,3 @@
-
 #include "imu_sensor.h"
 #include "sensor_shared.h"
 
@@ -37,6 +36,12 @@ void imu_sensor_sample_process(void)
             sensor_value_to_double(&accel_y), sensor_value_to_double(&accel_z));
     LOG_INF("%s", out_str);
 
+    k_mutex_lock(&sensor_data_mutex, K_FOREVER);
+    sensor_data.accel_x = sensor_value_to_double(&accel_x);
+    sensor_data.accel_y = sensor_value_to_double(&accel_y);
+    sensor_data.accel_z = sensor_value_to_double(&accel_z);
+    k_mutex_unlock(&sensor_data_mutex);
+
     /* lsm6dsl gyro */
     sensor_sample_fetch_chan(imu_dev, SENSOR_CHAN_GYRO_XYZ);
     sensor_channel_get(imu_dev, SENSOR_CHAN_GYRO_X, &gyro_x);
@@ -46,15 +51,23 @@ void imu_sensor_sample_process(void)
     sprintf(out_str, "gyro x:%f dps y:%f dps z:%f dps", sensor_value_to_double(&gyro_x),
             sensor_value_to_double(&gyro_y), sensor_value_to_double(&gyro_z));
     LOG_INF("%s", out_str);
+
+    k_mutex_lock(&sensor_data_mutex, K_FOREVER);
+    sensor_data.gyro_x = sensor_value_to_double(&gyro_x);
+    sensor_data.gyro_y = sensor_value_to_double(&gyro_y);
+    sensor_data.gyro_z = sensor_value_to_double(&gyro_z);
+    k_mutex_unlock(&sensor_data_mutex);
 }
 
 int imu_sensor_init(void)
 {
-    struct sensor_value odr_attr;
+
     if (!device_is_ready(imu_dev)) {
         LOG_ERR("sensor: device not ready.");
         return -1;
     }
+
+    struct sensor_value odr_attr;
 
     /* set accel/gyro sampling frequency to 104 Hz */
     odr_attr.val1 = 104;
@@ -76,64 +89,6 @@ int imu_sensor_init(void)
 
 int imu_sensor_thread(void *a, void *b, void *c)
 {
-    if (!device_is_ready(imu_dev)) {
-        LOG_ERR("sensor: device not ready.");
-        return -1;
-    }
 
-    struct sensor_value odr_attr;
-
-    /* set accel/gyro sampling frequency to 104 Hz */
-    odr_attr.val1 = 104;
-    odr_attr.val2 = 0;
-
-    if (sensor_attr_set(imu_dev, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_SAMPLING_FREQUENCY, &odr_attr) < 0) {
-        LOG_ERR("Cannot set sampling frequency for accelerometer.");
-        return -1;
-    }
-
-    if (sensor_attr_set(imu_dev, SENSOR_CHAN_GYRO_XYZ, SENSOR_ATTR_SAMPLING_FREQUENCY, &odr_attr) < 0) {
-        LOG_ERR("Cannot set sampling frequency for gyro.");
-        return -1;
-    }
-
-    while (1) {
-        char out_str[64];
-        struct sensor_value accel_x, accel_y, accel_z;
-        struct sensor_value gyro_x, gyro_y, gyro_z;
-
-        /* lsm6dsl accel */
-        sensor_sample_fetch_chan(imu_dev, SENSOR_CHAN_ACCEL_XYZ);
-        sensor_channel_get(imu_dev, SENSOR_CHAN_ACCEL_X, &accel_x);
-        sensor_channel_get(imu_dev, SENSOR_CHAN_ACCEL_Y, &accel_y);
-        sensor_channel_get(imu_dev, SENSOR_CHAN_ACCEL_Z, &accel_z);
-
-        sprintf(out_str, "accel x:%f ms/2 y:%f ms/2 z:%f ms/2", sensor_value_to_double(&accel_x),
-                sensor_value_to_double(&accel_y), sensor_value_to_double(&accel_z));
-        LOG_INF("%s", out_str);
-
-        k_mutex_lock(&sensor_data_mutex, K_FOREVER);
-        sensor_data.accel_x = sensor_value_to_double(&accel_x);
-        sensor_data.accel_y = sensor_value_to_double(&accel_y);
-        sensor_data.accel_z = sensor_value_to_double(&accel_z);
-        k_mutex_unlock(&sensor_data_mutex);
-
-        /* lsm6dsl gyro */
-        sensor_sample_fetch_chan(imu_dev, SENSOR_CHAN_GYRO_XYZ);
-        sensor_channel_get(imu_dev, SENSOR_CHAN_GYRO_X, &gyro_x);
-        sensor_channel_get(imu_dev, SENSOR_CHAN_GYRO_Y, &gyro_y);
-        sensor_channel_get(imu_dev, SENSOR_CHAN_GYRO_Z, &gyro_z);
-
-        sprintf(out_str, "gyro x:%f dps y:%f dps z:%f dps", sensor_value_to_double(&gyro_x),
-                sensor_value_to_double(&gyro_y), sensor_value_to_double(&gyro_z));
-        LOG_INF("%s", out_str);
-
-        k_mutex_lock(&sensor_data_mutex, K_FOREVER);
-        sensor_data.gyro_x = sensor_value_to_double(&gyro_x);
-        sensor_data.gyro_y = sensor_value_to_double(&gyro_y);
-        sensor_data.gyro_z = sensor_value_to_double(&gyro_z);
-        k_mutex_unlock(&sensor_data_mutex);
-
-        k_sleep(K_SECONDS(5));
-    }
+    k_sleep(K_SECONDS(5));
 }
