@@ -1,0 +1,17 @@
+/ {
+    pwmleds: pwmleds {
+		compatible = "pwm-leds";
+		status = "okay";
+	};
+};
+
+&spi1 {
+	status = "disabled";
+};
+
+&timers2 {
+	pwm2: pwm {
+		pinctrl-0 = <&tim2_ch1_pa5>;
+		pinctrl-names = "default";
+	};
+};
