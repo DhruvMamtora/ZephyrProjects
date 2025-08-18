@@ -54,9 +54,3 @@ int pressure_sensor_init(void)
 
     return 0;
 }
-
-int pressure_sensor_thread(void *a, void *b, void *c)
-{
-
-    k_sleep(K_SECONDS(5));
-}

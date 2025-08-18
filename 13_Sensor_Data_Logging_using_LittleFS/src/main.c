@@ -2,6 +2,7 @@
 #include "imu_sensor.h"
 #include "pressure_sensor.h"
 #include "sensor_shared.h"
+#include "sensor_storage.h"
 
 #include <zephyr/kernel.h>
 #include <zephyr/sys/util.h>
@@ -15,19 +16,26 @@
 #define PRIORITY   5
 #define SLEEP_TIME K_SECONDS(5)
 
+#define STORAGE_STACK_SIZE 1024 * 4
+#define STORAGE_PRIORITY   4
+#define STORAGE_INTERVAL   K_MINUTES(1)
+
 K_THREAD_STACK_DEFINE(hum_temp_stack, STACK_SIZE);
 K_THREAD_STACK_DEFINE(pressure_stack, STACK_SIZE);
 K_THREAD_STACK_DEFINE(imu_stack, STACK_SIZE);
+K_THREAD_STACK_DEFINE(storage_stack, STORAGE_STACK_SIZE);
 
 static struct k_thread hum_temp_thread_data;
 static struct k_thread pressure_thread_data;
 static struct k_thread imu_thread_data;
+static struct k_thread storage_thread_data;
 
-static k_tid_t hum_temp_tid, pressure_tid, imu_tid;
+static k_tid_t hum_temp_tid, pressure_tid, imu_tid, storage_tid;
 
 static bool terminate_hum_temp_thread = false;
 static bool terminate_pressure_thread = false;
 static bool terminate_imu_thread = false;
+static bool terminate_storage_thread = false;
 
 LOG_MODULE_REGISTER(main);
 
@@ -167,15 +175,58 @@ static int shell_stop_all_sensors(const struct shell *sh, size_t argc, char **ar
     return 0;
 }
 
-SHELL_STATIC_SUBCMD_SET_CREATE(sub_demo,
-                               SHELL_CMD(start_hum_temp, NULL, "Start HTS221 thread", shell_start_hum_temp_thread),
-                               SHELL_CMD(start_pressure, NULL, "Start LPS22HB thread", shell_start_pressure_thread),
-                               SHELL_CMD(start_imu, NULL, "Start LSM6DSL thread", shell_start_imu_thread),
-                               SHELL_CMD(start, NULL, "Start all sensor threads", shell_start_all_sensors),
-                               SHELL_CMD(stop_hum_temp, NULL, "Stop HTS221 thread", shell_stop_hum_temp_thread),
-                               SHELL_CMD(stop_pressure, NULL, "Stop LPS22HB thread", shell_stop_pressure_thread),
-                               SHELL_CMD(stop_imu, NULL, "Stop LSM6DSL thread", shell_stop_imu_thread),
-                               SHELL_CMD(stop, NULL, "Stop all sensor thread", shell_stop_all_sensors),
-                               SHELL_SUBCMD_SET_END);
+static void sensor_storage_thread(void *a, void *b, void *c)
+{
+    LOG_INF("Sensor storage thread started.");
+    k_mutex_lock(&sensor_data_mutex, K_FOREVER);
+    littlefs_save_sensor_data(&sensor_data);
+    k_mutex_unlock(&sensor_data_mutex);
+    // while (!terminate_storage_thread)
+    // {
+    //     k_mutex_lock(&sensor_data_mutex, K_FOREVER);
+    //     int rc = littlefs_save_sensor_data(&sensor_data);
+    //     k_mutex_unlock(&sensor_data_mutex);
+
+    //     if (rc < 0)
+    //     {
+    //         LOG_ERR("Failed to save sensor data to LittleFS (%d)", rc);
+    //     }
+    //     else
+    //     {
+    //         LOG_INF("Sensor data saved to LittleFS.");
+    //     }
+
+    //     k_sleep(STORAGE_INTERVAL);
+    // }
+
+    LOG_INF("Sensor storage thread stopped.");
+}
+
+static int shell_start_storage_thread(const struct shell *sh, size_t argc, char **argv, void *data)
+{
+    terminate_storage_thread = false;
+    storage_tid = k_thread_create(&storage_thread_data, storage_stack, K_THREAD_STACK_SIZEOF(storage_stack),
+                                  sensor_storage_thread, NULL, NULL, NULL, STORAGE_PRIORITY, 0, K_NO_WAIT);
+    return 0;
+}
+
+static int shell_stop_storage_thread(const struct shell *sh, size_t argc, char **argv)
+{
+    terminate_storage_thread = true;
+    k_thread_join(storage_tid, K_FOREVER);
+    return 0;
+}
+
+SHELL_STATIC_SUBCMD_SET_CREATE(
+    sub_demo, SHELL_CMD(start_hum_temp, NULL, "Start HTS221 thread", shell_start_hum_temp_thread),
+    SHELL_CMD(start_pressure, NULL, "Start LPS22HB thread", shell_start_pressure_thread),
+    SHELL_CMD(start_imu, NULL, "Start LSM6DSL thread", shell_start_imu_thread),
+    SHELL_CMD(start, NULL, "Start all sensor threads", shell_start_all_sensors),
+    SHELL_CMD(stop_hum_temp, NULL, "Stop HTS221 thread", shell_stop_hum_temp_thread),
+    SHELL_CMD(stop_pressure, NULL, "Stop LPS22HB thread", shell_stop_pressure_thread),
+    SHELL_CMD(stop_imu, NULL, "Stop LSM6DSL thread", shell_stop_imu_thread),
+    SHELL_CMD(stop, NULL, "Stop all sensor thread", shell_stop_all_sensors),
+    SHELL_CMD(start_storage, NULL, "Start sensor storage thread", shell_start_storage_thread),
+    SHELL_CMD(stop_storage, NULL, "Stop sensor storage thread", shell_stop_storage_thread), SHELL_SUBCMD_SET_END);
 /* Creating root (level 0) command "demo" */
 SHELL_CMD_REGISTER(sensor, &sub_demo, "Sensor Demo commands", NULL);

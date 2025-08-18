@@ -10,7 +10,7 @@
 LOG_MODULE_REGISTER(imu);
 
 #if DT_NODE_EXISTS(DT_ALIAS(imu_sensor))
-#define HUM_TEMP_NODE DT_ALIAS(imu_sensor)
+#define IMU_NODE DT_ALIAS(imu_sensor)
 const struct device *const imu_dev = DEVICE_DT_GET(DT_ALIAS(imu_sensor));
 #else
 #error ("IMU sensor not found.");
@@ -85,10 +85,4 @@ int imu_sensor_init(void)
 
     imu_sensor_sample_process();
     return 0;
-}
-
-int imu_sensor_thread(void *a, void *b, void *c)
-{
-
-    k_sleep(K_SECONDS(5));
 }
