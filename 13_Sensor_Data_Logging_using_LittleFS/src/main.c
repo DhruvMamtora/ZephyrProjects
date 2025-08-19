@@ -178,26 +178,14 @@ static int shell_stop_all_sensors(const struct shell *sh, size_t argc, char **ar
 static void sensor_storage_thread(void *a, void *b, void *c)
 {
     LOG_INF("Sensor storage thread started.");
-    k_mutex_lock(&sensor_data_mutex, K_FOREVER);
-    littlefs_save_sensor_data(&sensor_data);
-    k_mutex_unlock(&sensor_data_mutex);
-    // while (!terminate_storage_thread)
-    // {
-    //     k_mutex_lock(&sensor_data_mutex, K_FOREVER);
-    //     int rc = littlefs_save_sensor_data(&sensor_data);
-    //     k_mutex_unlock(&sensor_data_mutex);
 
-    //     if (rc < 0)
-    //     {
-    //         LOG_ERR("Failed to save sensor data to LittleFS (%d)", rc);
-    //     }
-    //     else
-    //     {
-    //         LOG_INF("Sensor data saved to LittleFS.");
-    //     }
+    while (!terminate_storage_thread) {
+        k_mutex_lock(&sensor_data_mutex, K_FOREVER);
+        littlefs_save_sensor_data(&sensor_data);
+        k_mutex_unlock(&sensor_data_mutex);
 
-    //     k_sleep(STORAGE_INTERVAL);
-    // }
+        k_sleep(STORAGE_INTERVAL);
+    }
 
     LOG_INF("Sensor storage thread stopped.");
 }
