@@ -24,7 +24,7 @@
 /** MACRO DEFINITIONS */
 #define IMU_SENSOR_THREAD_STACK_SIZE 1024
 #define IMU_SENSOR_THREAD_PRIORITY   5
-#define IMU_SENSOR_THREAD_SLEEP_TIME K_SECONDS(5)
+#define IMU_SENSOR_THREAD_SLEEP_TIME K_SECONDS(30)
 
 #define IMU_Q_MAX_MSGS 10
 #define IMU_Q_ALIGN    32
@@ -110,7 +110,10 @@ int imuSensorProcess(motionData_t *motionDataStruct)
 	struct sensor_value gyro_x, gyro_y, gyro_z;
 
 	/* Fetch accelerometer data */
-	sensor_sample_fetch_chan(imuDev, SENSOR_CHAN_ACCEL_XYZ);
+	if (sensor_sample_fetch_chan(imuDev, SENSOR_CHAN_ACCEL_XYZ) < 0) {
+		LOG_ERR("Accelerometer Sensor sample update error");
+		return -1;
+	}
 	sensor_channel_get(imuDev, SENSOR_CHAN_ACCEL_X, &accel_x);
 	sensor_channel_get(imuDev, SENSOR_CHAN_ACCEL_Y, &accel_y);
 	sensor_channel_get(imuDev, SENSOR_CHAN_ACCEL_Z, &accel_z);
@@ -120,7 +123,10 @@ int imuSensorProcess(motionData_t *motionDataStruct)
 	motionDataStruct->accel.z = sensor_value_to_double(&accel_z);
 
 	/* Fetch gyroscope data */
-	sensor_sample_fetch_chan(imuDev, SENSOR_CHAN_GYRO_XYZ);
+	if (sensor_sample_fetch_chan(imuDev, SENSOR_CHAN_GYRO_XYZ) < 0) {
+		LOG_ERR("Gyroscope Sensor sample update error");
+		return -1;
+	}
 	sensor_channel_get(imuDev, SENSOR_CHAN_GYRO_X, &gyro_x);
 	sensor_channel_get(imuDev, SENSOR_CHAN_GYRO_Y, &gyro_y);
 	sensor_channel_get(imuDev, SENSOR_CHAN_GYRO_Z, &gyro_z);
@@ -171,4 +177,4 @@ void imuSensorThread(void *a, void *b, void *c)
 
 /* Define the IMU sensor thread */
 K_THREAD_DEFINE(imuSensorThreadId, IMU_SENSOR_THREAD_STACK_SIZE, imuSensorThread, NULL, NULL, NULL,
-		IMU_SENSOR_THREAD_PRIORITY, 0, 0);
+		IMU_SENSOR_THREAD_PRIORITY, 0, 2000);

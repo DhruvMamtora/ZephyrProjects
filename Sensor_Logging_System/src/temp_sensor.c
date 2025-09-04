@@ -25,7 +25,7 @@
 /** MACRO DEFINITIONS */
 #define TEMP_SENSOR_THREAD_STACK_SIZE 512
 #define TEMP_SENSOR_THREAD_PRIORITY   5
-#define TEMP_SENSOR_THREAD_SLEEP_TIME K_SECONDS(5)
+#define TEMP_SENSOR_THREAD_SLEEP_TIME K_SECONDS(30)
 
 #define TEMP_Q_MAX_MSGS 10
 #define TEMP_Q_ALIGN    32
@@ -142,4 +142,4 @@ void tempSensorThread(void *a, void *b, void *c)
 
 /* Define the temperature sensor thread */
 K_THREAD_DEFINE(tempThreadId, TEMP_SENSOR_THREAD_STACK_SIZE, tempSensorThread, NULL, NULL, NULL,
-		TEMP_SENSOR_THREAD_PRIORITY, 0, 0);
+		TEMP_SENSOR_THREAD_PRIORITY, 0, 2000);

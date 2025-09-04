@@ -1,34 +1,76 @@
+/*
+ * @file main.c
+ * @author Dhruv Mamtora
+ * @version 0.1.0
+ * @date 05 August, 2025
+ *
+ * @brief  PWM-based LED blinking application
+ *
+ * @details
+ * This file contains the implementation of a PWM blinking application
+ * for two LEDs. It initializes PWM devices, calibrates the maximum period
+ * supported, and toggles the blinking frequencies of the LEDs in a loop
+ * to create a dynamic lighting effect.
+ *
+ * @copyright Copyright (c) 2025
+ */
+
+/** REQUIRED HEADER FILES */
 #include <zephyr/kernel.h>
 #include <zephyr/sys/printk.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/pwm.h>
 
-static const struct pwm_dt_spec pwm_led0 = PWM_DT_SPEC_GET(DT_ALIAS(pwm_led0));
-static const struct pwm_dt_spec pwm_led1 = PWM_DT_SPEC_GET(DT_ALIAS(pwm_led1));
-
+/** MACRO DEFINITIONS */
 #define MIN_PERIOD PWM_SEC(1U) / 128U
 #define MAX_PERIOD PWM_SEC(1U)
 
+/** GLOBAL VARIABLES */
+static const struct pwm_dt_spec pwm_led0 = PWM_DT_SPEC_GET(DT_ALIAS(pwm_led0));
+static const struct pwm_dt_spec pwm_led1 = PWM_DT_SPEC_GET(DT_ALIAS(pwm_led1));
+
+/*
+ * @brief main - Entry point for PWM-based LED blinking application.
+ *
+ * @author Dhruv Mamtora
+ * @date 05 August, 2025
+ *
+ * @details
+ * This function initializes two PWM devices and generates a blinking effect with varying frequency
+ * on two LEDs using PWM. One LED blinks faster as the other blinks slower, creating a dynamic
+ * visual effect. The program calibrates the maximum usable PWM period and then continuously
+ * alternates the duty cycle and period of the PWM signals in a loop.
+ *
+ * @pre PWM device aliases must be defined in the device tree.
+ *
+ * @return return 0 on success and -1 on Error
+ *
+ * @retval 0 Success
+ * @retval -1 Error
+ *
+ * @remarks
+ * - The application uses `pwm_set_dt()` for setting PWM signal parameters.
+ * - The period of LED0 increases/decreases exponentially, and LED1 is inverted
+ *   to maintain a contrast in blinking rates.
+ */
 int main(void)
 {
-	uint32_t max_period;
-	uint32_t period;
-	uint32_t invert_period;
-	uint8_t dir = 0U;
-	int ret;
+	uint32_t iMaxPeriod;
+	uint32_t iPeriod;
+	uint32_t iInvertPeriod;
+	uint8_t iDir = 0U;
+	int iReturn;
 
 	printk("PWM-based blinky\n");
 
 	if (!pwm_is_ready_dt(&pwm_led0)) {
-		printk("Error: PWM device %s is not ready\n",
-		       pwm_led0.dev->name);
-		return 0;
+		printk("Error: PWM device %s is not ready\n", pwm_led0.dev->name);
+		return -1;
 	}
 
 	if (!pwm_is_ready_dt(&pwm_led1)) {
-		printk("Error: PWM device %s is not ready\n",
-		       pwm_led1.dev->name);
-		return 0;
+		printk("Error: PWM device %s is not ready\n", pwm_led1.dev->name);
+		return -1;
 	}
 
 	/*
@@ -39,54 +81,52 @@ int main(void)
 	 * the sample changes frequency at least once.
 	 */
 	printk("Calibrating for channel %d...\n", pwm_led0.channel);
-	max_period = MAX_PERIOD;
-	//pwm_led0 set to Max period (slow blink)
-	//pwm_led1 set to Min period (fast blink)
-	while (pwm_set_dt(&pwm_led0, max_period, max_period / 2U) ||
-			pwm_set_dt(&pwm_led1, MIN_PERIOD, MIN_PERIOD / 2U)) {
-		max_period /= 2U;
-		if (max_period < (4U * MIN_PERIOD)) {
+	iMaxPeriod = MAX_PERIOD;
+	/* pwm_led0 set to Max period (slow blink) */
+	/* pwm_led1 set to Min period (fast blink) */
+	while (pwm_set_dt(&pwm_led0, iMaxPeriod, iMaxPeriod / 2U) ||
+	       pwm_set_dt(&pwm_led1, MIN_PERIOD, MIN_PERIOD / 2U)) {
+		iMaxPeriod /= 2U;
+		if (iMaxPeriod < (4U * MIN_PERIOD)) {
 			printk("Error: PWM device "
 			       "does not support a period at least %lu\n",
 			       4U * MIN_PERIOD);
-			return 0;
+			return -1;
 		}
 	}
 
-	printk("Done calibrating; maximum/minimum periods %u/%lu nsec\n",
-	       max_period, MIN_PERIOD);
+	printk("Done calibrating; maximum/minimum periods %u/%lu nsec\n", iMaxPeriod, MIN_PERIOD);
 
-	period = max_period;
+	iPeriod = iMaxPeriod;
 	while (1) {
 
-		invert_period = max_period + MIN_PERIOD - period;
+		iInvertPeriod = iMaxPeriod + MIN_PERIOD - iPeriod;
 
-		ret = pwm_set_dt(&pwm_led0, period, period / 2U);
-		if (ret) {
-			printk("Error %d: failed to set pulse width\n", ret);
+		iReturn = pwm_set_dt(&pwm_led0, iPeriod, iPeriod / 2U);
+		if (iReturn) {
+			printk("Error %d: failed to set pulse width\n", iReturn);
 			return 0;
 		}
-		
-		ret = pwm_set_dt(&pwm_led1, invert_period, invert_period / 2U);
-		if (ret) {
-			printk("Error %d: failed to set pulse width\n", ret);
+
+		iReturn = pwm_set_dt(&pwm_led1, iInvertPeriod, iInvertPeriod / 2U);
+		if (iReturn) {
+			printk("Error %d: failed to set pulse width\n", iReturn);
 			return 0;
 		}
-		
-		printk("&pwm_led0 period = %d\t\t&pwm_led1 period = %d \n",
-			 period,invert_period);
 
-		period = dir ? (period * 2U) : (period / 2U);
-		if (period > max_period) {
-			period = max_period / 2U;
-			dir = 0U;
-		} else if (period < MIN_PERIOD) {
-			period = MIN_PERIOD * 2U;
-			dir = 1U;
+		printk("&pwm_led0 iPeriod = %d\t\t&pwm_led1 iPeriod = %d \n", iPeriod,
+		       iInvertPeriod);
+
+		iPeriod = iDir ? (iPeriod * 2U) : (iPeriod / 2U);
+		if (iPeriod > iMaxPeriod) {
+			iPeriod = iMaxPeriod / 2U;
+			iDir = 0U;
+		} else if (iPeriod < MIN_PERIOD) {
+			iPeriod = MIN_PERIOD * 2U;
+			iDir = 1U;
 		}
 
 		k_sleep(K_SECONDS(4U));
 	}
 	return 0;
 }
-

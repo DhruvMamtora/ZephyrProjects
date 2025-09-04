@@ -25,7 +25,7 @@
 /** MACRO DEFINITIONS */
 #define HUM_SENSOR_THREAD_STACK_SIZE 512
 #define HUM_SENSOR_THREAD_PRIORITY   5
-#define HUM_SENSOR_THREAD_SLEEP_TIME K_SECONDS(5)
+#define HUM_SENSOR_THREAD_SLEEP_TIME K_SECONDS(30)
 
 #define HUM_Q_MAX_MSGS 10
 #define HUM_Q_ALIGN    32
@@ -141,4 +141,4 @@ void humSensorThread(void *a, void *b, void *c)
 
 /* Define the humidity sensor thread */
 K_THREAD_DEFINE(humThreadId, HUM_SENSOR_THREAD_STACK_SIZE, humSensorThread, NULL, NULL, NULL,
-		HUM_SENSOR_THREAD_PRIORITY, 0, 0);
+		HUM_SENSOR_THREAD_PRIORITY, 0, 2000);
