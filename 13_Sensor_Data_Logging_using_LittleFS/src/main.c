@@ -41,180 +41,188 @@ LOG_MODULE_REGISTER(main);
 
 int main(void)
 {
-    int ret;
+	int ret;
 
-    k_mutex_init(&sensor_data_mutex);
+	k_mutex_init(&sensor_data_mutex);
 
-    ret = hun_temp_sensor_init();
-    if (ret < 0) {
-        LOG_ERR("Humidity-Temperature Sensor init failed");
-        return ret;
-    }
+	ret = hun_temp_sensor_init();
+	if (ret < 0) {
+		LOG_ERR("Humidity-Temperature Sensor init failed");
+		return ret;
+	}
 
-    ret = pressure_sensor_init();
-    if (ret < 0) {
-        LOG_ERR("Pressure Sensor init failed");
-        return ret;
-    }
+	ret = pressure_sensor_init();
+	if (ret < 0) {
+		LOG_ERR("Pressure Sensor init failed");
+		return ret;
+	}
 
-    ret = imu_sensor_init();
-    if (ret < 0) {
-        LOG_ERR("IMU Sensor init failed");
-        return ret;
-    }
+	ret = imu_sensor_init();
+	if (ret < 0) {
+		LOG_ERR("IMU Sensor init failed");
+		return ret;
+	}
 
-    return 0;
+	return 0;
 }
 
 static void hun_temp_sensor_thread(void *a, void *b, void *c)
 {
-    LOG_INF("Humidity-Temperature sensor thread started.");
+	LOG_INF("Humidity-Temperature sensor thread started.");
 
-    while (!terminate_hum_temp_thread) {
-        hum_temp_sensor_process_sample();
-        k_sleep(SLEEP_TIME);
-    }
+	while (!terminate_hum_temp_thread) {
+		hum_temp_sensor_process_sample();
+		k_sleep(SLEEP_TIME);
+	}
 
-    LOG_INF("Humidity-Temperature sensor thread stopped.");
+	LOG_INF("Humidity-Temperature sensor thread stopped.");
 }
 
 static void pressure_sensor_thread(void *a, void *b, void *c)
 {
-    LOG_INF("Pressure sensor thread started.");
+	LOG_INF("Pressure sensor thread started.");
 
-    while (!terminate_pressure_thread) {
-        pressure_sensor_process_sample();
-        k_sleep(SLEEP_TIME);
-    }
+	while (!terminate_pressure_thread) {
+		pressure_sensor_process_sample();
+		k_sleep(SLEEP_TIME);
+	}
 
-    LOG_INF("Pressure sensor thread stopped.");
+	LOG_INF("Pressure sensor thread stopped.");
 }
 
 static void imu_sensor_thread(void *a, void *b, void *c)
 {
-    LOG_INF("IMU sensor thread started.");
+	LOG_INF("IMU sensor thread started.");
 
-    while (!terminate_imu_thread) {
-        imu_sensor_sample_process();
-        k_sleep(SLEEP_TIME);
-    }
+	while (!terminate_imu_thread) {
+		imu_sensor_sample_process();
+		k_sleep(SLEEP_TIME);
+	}
 
-    LOG_INF("IMU sensor thread stopped.");
+	LOG_INF("IMU sensor thread stopped.");
 }
 
 static int shell_start_hum_temp_thread(const struct shell *sh, size_t argc, char **argv, void *data)
 {
-    terminate_hum_temp_thread = false;
-    hum_temp_tid = k_thread_create(&hum_temp_thread_data, hum_temp_stack, K_THREAD_STACK_SIZEOF(hum_temp_stack),
-                                   hun_temp_sensor_thread, NULL, NULL, NULL, PRIORITY, 0, K_NO_WAIT);
-    return 0;
+	terminate_hum_temp_thread = false;
+	hum_temp_tid = k_thread_create(
+		&hum_temp_thread_data, hum_temp_stack, K_THREAD_STACK_SIZEOF(hum_temp_stack),
+		hun_temp_sensor_thread, NULL, NULL, NULL, PRIORITY, 0, K_NO_WAIT);
+	return 0;
 }
 
 static int shell_start_pressure_thread(const struct shell *sh, size_t argc, char **argv, void *data)
 {
-    terminate_pressure_thread = false;
-    pressure_tid = k_thread_create(&pressure_thread_data, pressure_stack, K_THREAD_STACK_SIZEOF(pressure_stack),
-                                   pressure_sensor_thread, NULL, NULL, NULL, PRIORITY, 0, K_NO_WAIT);
-    return 0;
+	terminate_pressure_thread = false;
+	pressure_tid = k_thread_create(
+		&pressure_thread_data, pressure_stack, K_THREAD_STACK_SIZEOF(pressure_stack),
+		pressure_sensor_thread, NULL, NULL, NULL, PRIORITY, 0, K_NO_WAIT);
+	return 0;
 }
 
 static int shell_start_imu_thread(const struct shell *sh, size_t argc, char **argv, void *data)
 {
-    terminate_imu_thread = false;
-    imu_tid = k_thread_create(&imu_thread_data, imu_stack, K_THREAD_STACK_SIZEOF(imu_stack), (void *)imu_sensor_thread,
-                              NULL, NULL, NULL, PRIORITY, 0, K_NO_WAIT);
-    return 0;
+	terminate_imu_thread = false;
+	imu_tid = k_thread_create(&imu_thread_data, imu_stack, K_THREAD_STACK_SIZEOF(imu_stack),
+				  (void *)imu_sensor_thread, NULL, NULL, NULL, PRIORITY, 0,
+				  K_NO_WAIT);
+	return 0;
 }
 
 static int shell_start_all_sensors(const struct shell *sh, size_t argc, char **argv, void *data)
 {
-    terminate_hum_temp_thread = false;
-    terminate_pressure_thread = false;
-    terminate_imu_thread = false;
+	terminate_hum_temp_thread = false;
+	terminate_pressure_thread = false;
+	terminate_imu_thread = false;
 
-    hum_temp_tid = k_thread_create(&hum_temp_thread_data, hum_temp_stack, K_THREAD_STACK_SIZEOF(hum_temp_stack),
-                                   hun_temp_sensor_thread, NULL, NULL, NULL, PRIORITY, 0, K_NO_WAIT);
-    pressure_tid = k_thread_create(&pressure_thread_data, pressure_stack, K_THREAD_STACK_SIZEOF(pressure_stack),
-                                   pressure_sensor_thread, NULL, NULL, NULL, PRIORITY, 0, K_NO_WAIT);
-    imu_tid = k_thread_create(&imu_thread_data, imu_stack, K_THREAD_STACK_SIZEOF(imu_stack), imu_sensor_thread, NULL,
-                              NULL, NULL, PRIORITY, 0, K_NO_WAIT);
-    return 0;
+	hum_temp_tid = k_thread_create(
+		&hum_temp_thread_data, hum_temp_stack, K_THREAD_STACK_SIZEOF(hum_temp_stack),
+		hun_temp_sensor_thread, NULL, NULL, NULL, PRIORITY, 0, K_NO_WAIT);
+	pressure_tid = k_thread_create(
+		&pressure_thread_data, pressure_stack, K_THREAD_STACK_SIZEOF(pressure_stack),
+		pressure_sensor_thread, NULL, NULL, NULL, PRIORITY, 0, K_NO_WAIT);
+	imu_tid = k_thread_create(&imu_thread_data, imu_stack, K_THREAD_STACK_SIZEOF(imu_stack),
+				  imu_sensor_thread, NULL, NULL, NULL, PRIORITY, 0, K_NO_WAIT);
+	return 0;
 }
 
 static int shell_stop_hum_temp_thread(const struct shell *sh, size_t argc, char **argv)
 {
-    terminate_hum_temp_thread = true;
-    k_thread_join(hum_temp_tid, K_FOREVER);
-    return 0;
+	terminate_hum_temp_thread = true;
+	k_thread_join(hum_temp_tid, K_FOREVER);
+	return 0;
 }
 
 static int shell_stop_pressure_thread(const struct shell *sh, size_t argc, char **argv)
 {
-    terminate_pressure_thread = true;
-    k_thread_join(pressure_tid, K_FOREVER);
-    return 0;
+	terminate_pressure_thread = true;
+	k_thread_join(pressure_tid, K_FOREVER);
+	return 0;
 }
 
 static int shell_stop_imu_thread(const struct shell *sh, size_t argc, char **argv)
 {
-    terminate_imu_thread = true;
-    k_thread_join(imu_tid, K_FOREVER);
-    return 0;
+	terminate_imu_thread = true;
+	k_thread_join(imu_tid, K_FOREVER);
+	return 0;
 }
 
 static int shell_stop_all_sensors(const struct shell *sh, size_t argc, char **argv)
 {
-    terminate_hum_temp_thread = true;
-    terminate_pressure_thread = true;
-    terminate_imu_thread = true;
+	terminate_hum_temp_thread = true;
+	terminate_pressure_thread = true;
+	terminate_imu_thread = true;
 
-    k_thread_join(hum_temp_tid, K_FOREVER);
-    k_thread_join(pressure_tid, K_FOREVER);
-    k_thread_join(imu_tid, K_FOREVER);
+	k_thread_join(hum_temp_tid, K_FOREVER);
+	k_thread_join(pressure_tid, K_FOREVER);
+	k_thread_join(imu_tid, K_FOREVER);
 
-    return 0;
+	return 0;
 }
 
 static void sensor_storage_thread(void *a, void *b, void *c)
 {
-    LOG_INF("Sensor storage thread started.");
+	LOG_INF("Sensor storage thread started.");
 
-    while (!terminate_storage_thread) {
-        k_mutex_lock(&sensor_data_mutex, K_FOREVER);
-        littlefs_save_sensor_data(&sensor_data);
-        k_mutex_unlock(&sensor_data_mutex);
+	while (!terminate_storage_thread) {
+		k_mutex_lock(&sensor_data_mutex, K_FOREVER);
+		littlefs_save_sensor_data(&sensor_data);
+		k_mutex_unlock(&sensor_data_mutex);
 
-        k_sleep(STORAGE_INTERVAL);
-    }
+		k_sleep(STORAGE_INTERVAL);
+	}
 
-    LOG_INF("Sensor storage thread stopped.");
+	LOG_INF("Sensor storage thread stopped.");
 }
 
 static int shell_start_storage_thread(const struct shell *sh, size_t argc, char **argv, void *data)
 {
-    terminate_storage_thread = false;
-    storage_tid = k_thread_create(&storage_thread_data, storage_stack, K_THREAD_STACK_SIZEOF(storage_stack),
-                                  sensor_storage_thread, NULL, NULL, NULL, STORAGE_PRIORITY, 0, K_NO_WAIT);
-    return 0;
+	terminate_storage_thread = false;
+	storage_tid = k_thread_create(&storage_thread_data, storage_stack,
+				      K_THREAD_STACK_SIZEOF(storage_stack), sensor_storage_thread,
+				      NULL, NULL, NULL, STORAGE_PRIORITY, 0, K_NO_WAIT);
+	return 0;
 }
 
 static int shell_stop_storage_thread(const struct shell *sh, size_t argc, char **argv)
 {
-    terminate_storage_thread = true;
-    k_thread_join(storage_tid, K_FOREVER);
-    return 0;
+	terminate_storage_thread = true;
+	k_thread_join(storage_tid, K_FOREVER);
+	return 0;
 }
 
 SHELL_STATIC_SUBCMD_SET_CREATE(
-    sub_demo, SHELL_CMD(start_hum_temp, NULL, "Start HTS221 thread", shell_start_hum_temp_thread),
-    SHELL_CMD(start_pressure, NULL, "Start LPS22HB thread", shell_start_pressure_thread),
-    SHELL_CMD(start_imu, NULL, "Start LSM6DSL thread", shell_start_imu_thread),
-    SHELL_CMD(start, NULL, "Start all sensor threads", shell_start_all_sensors),
-    SHELL_CMD(stop_hum_temp, NULL, "Stop HTS221 thread", shell_stop_hum_temp_thread),
-    SHELL_CMD(stop_pressure, NULL, "Stop LPS22HB thread", shell_stop_pressure_thread),
-    SHELL_CMD(stop_imu, NULL, "Stop LSM6DSL thread", shell_stop_imu_thread),
-    SHELL_CMD(stop, NULL, "Stop all sensor thread", shell_stop_all_sensors),
-    SHELL_CMD(start_storage, NULL, "Start sensor storage thread", shell_start_storage_thread),
-    SHELL_CMD(stop_storage, NULL, "Stop sensor storage thread", shell_stop_storage_thread), SHELL_SUBCMD_SET_END);
+	sub_demo,
+	SHELL_CMD(start_hum_temp, NULL, "Start HTS221 thread", shell_start_hum_temp_thread),
+	SHELL_CMD(start_pressure, NULL, "Start LPS22HB thread", shell_start_pressure_thread),
+	SHELL_CMD(start_imu, NULL, "Start LSM6DSL thread", shell_start_imu_thread),
+	SHELL_CMD(start, NULL, "Start all sensor threads", shell_start_all_sensors),
+	SHELL_CMD(stop_hum_temp, NULL, "Stop HTS221 thread", shell_stop_hum_temp_thread),
+	SHELL_CMD(stop_pressure, NULL, "Stop LPS22HB thread", shell_stop_pressure_thread),
+	SHELL_CMD(stop_imu, NULL, "Stop LSM6DSL thread", shell_stop_imu_thread),
+	SHELL_CMD(stop, NULL, "Stop all sensor thread", shell_stop_all_sensors),
+	SHELL_CMD(start_storage, NULL, "Start sensor storage thread", shell_start_storage_thread),
+	SHELL_CMD(stop_storage, NULL, "Stop sensor storage thread", shell_stop_storage_thread),
+	SHELL_SUBCMD_SET_END);
 /* Creating root (level 0) command "demo" */
 SHELL_CMD_REGISTER(sensor, &sub_demo, "Sensor Demo commands", NULL);
