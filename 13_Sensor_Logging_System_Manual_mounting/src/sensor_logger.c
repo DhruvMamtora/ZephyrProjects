@@ -119,7 +119,7 @@ int writeSensorData(sensorSharedBuffer_t *data)
 
 	fs_close(&file);
 	fs_sync(&file);
-	
+
 	return rc;
 }
 

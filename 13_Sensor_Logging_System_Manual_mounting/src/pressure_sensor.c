@@ -10,7 +10,7 @@
  * This file contains the implementation of the pressure sensor thread, which reads data from
  * the LPS22HH sensor and sends the pressure data to the logger thread via a message queue
  * for logging.
- * 
+ *
  * @copyright Copyright (c) 2025
  */
 
@@ -71,7 +71,7 @@ K_MSGQ_DEFINE(pressureMsgQ, sizeof(pressureData_t), PRESSURE_Q_MAX_MSGS, PRESSUR
  * @param[out] pressureDataStruct->dPressure Updated with the latest pressure value in hPa.
  *
  * @return 0 on success, -1 on failure.
- * 
+ *
  * @retval 0 Success
  * @retval -1 Error
  */
